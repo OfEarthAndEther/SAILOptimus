@@ -36,7 +36,7 @@ export default function Landing() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-12 h-11 bg-[white] rounded-lg">
+              <div className="flex items-center justify-center w-15 h-11 bg-[white] rounded-lg">
                 <img
                   src={Logo}
                   alt="Railway control center"
@@ -44,9 +44,9 @@ export default function Landing() {
                 />
                 {/* <Train className="h-6 w-6 text-primary-foreground" /> */}
               </div>
-              <h1 className="text-2xl font-bold text-foreground">
+              {/* <h1 className="text-2xl font-bold text-foreground">
                 R<span className="text-primary">AI</span>lOptimus
-              </h1>
+              </h1> */}
             </div>
             <div className="flex space-x-4">
               <Button variant="outline" asChild>
@@ -74,15 +74,13 @@ export default function Landing() {
         <div className="relative container mx-auto px-6 py-24">
           <div className="max-w-3xl">
             <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
-              R<span className="text-nav-accent">AI</span>lOptimus
+              S<span className="text-nav-accent">AI</span>L
             </h1>
             <p className="text-xl text-white/90 mb-8 leading-relaxed">
-              AI powered decision support system for section controllers
+              AI-Powered Delay Prediction System for Steel Logistics Operations
             </p>
             <p className="text-lg text-white/80 mb-10 max-w-2xl">
-              Transform railway operations with intelligent traffic management,
-              real-time monitoring, and AI-driven decision support designed
-              specifically for section controllers.
+              Optimize vessel, port, and freight operations with a machine learning-based logistics dashboard designed for SAIL. The system integrates Random Forest models to predict vessel, berthing, and freight delays in real time using parameters such as port congestion, rake availability, and plant utilization, enabling data-driven, cost-optimal scheduling and improved operational efficiency.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button size="lg" variant="hero" asChild>
