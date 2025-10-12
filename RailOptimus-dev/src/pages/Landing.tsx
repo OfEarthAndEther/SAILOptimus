@@ -1,31 +1,31 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Train, Zap, Shield, BarChart3 } from "lucide-react";
+import { Anchor, Zap, Shield, BarChart3 } from "lucide-react";
 import heroImage from "@/assets/railway-hero.jpg";
 import Logo from "@/assets/railOptimus_Logo.png";
 
 export default function Landing() {
   const features = [
     {
-      icon: Train,
+      icon: Anchor,
       title: "Real-time Tracking",
-      description: "Monitor train movements and schedules in real-time across your section."
+      description: "Monitor vessel, berthing, and freight delays in real time to enhance scheduling accuracy and operational control."
     },
     {
       icon: Zap,
       title: "AI-Powered Insights",
-      description: "Get intelligent suggestions for optimal traffic management and conflict resolution."
+      description: "Gain data-driven analytics for optimal vessel scheduling, port selection, and cost-efficient logistics planning."
     },
     {
       icon: Shield,
-      title: "Safety First",
-      description: "Built-in safety constraints ensure all operations meet railway safety standards."
+      title: "Operational Reliability",
+      description: "Integrated system constraints ensure all logistics decisions maintain compliance, safety, and process integrity."
     },
     {
       icon: BarChart3,
       title: "Advanced Analytics",
-      description: "Comprehensive reporting and analytics for performance optimization."
+      description: "Access detailed reports and analytics to evaluate efficiency, identify bottlenecks, and optimize overall logistics performance."
     }
   ];
 
@@ -99,11 +99,10 @@ export default function Landing() {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Professional Railway Control
+              Advanced Logistics Control
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Built for section controllers who demand precision, safety, and efficiency
-              in railway traffic management.
+              Designed for operations managers who prioritize precision, reliability, and efficiency in end-to-end steel logistics management.
             </p>
           </div>
 
@@ -129,11 +128,10 @@ export default function Landing() {
       <section className="py-20 bg-primary/5">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Ready to Transform Your Railway Operations?
+            Predict and Optimize Steel Logistics with SAIL
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join section controllers who trust RailOptimus for intelligent
-            traffic management and decision support.
+            Predict vessel, berthing, and train delays in real time and make data-driven decisions to streamline steel logistics and maximize operational efficiency.
           </p>
           <Button size="lg" variant="hero" asChild>
             <Link to="/signup">Start Your Free Account</Link>
@@ -147,14 +145,14 @@ export default function Landing() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-                <Train className="h-5 w-5 text-primary-foreground" />
+                <Anchor className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="font-semibold text-foreground">
-                R<span className="text-primary">AI</span>lOptimus
+                S<span className="text-primary">AI</span>L
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 RailOptimus. Professional railway control solutions.
+              © 2025 SAIL. Intelligent logistics optimization solutions.
             </p>
           </div>
         </div>
