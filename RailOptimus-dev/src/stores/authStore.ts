@@ -7,6 +7,7 @@ export interface User {
   _id: string;
   name: string;
   username: string;
+  section: string;
 }
 
 // --- Simplified AuthState interface ---

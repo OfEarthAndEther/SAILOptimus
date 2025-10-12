@@ -40,7 +40,7 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
       <Card className="h-full">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="flex items-center gap-2">
-            <span>Railway Simulation - RailOptiSim</span>
+            <span>Simulation Window</span>
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </CardTitle>
           <div className="flex gap-2">
@@ -69,7 +69,7 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex flex-col gap-2">
                 <span>
-                  Failed to load RailOptiSim. Please ensure the Python simulation is running on port 8050.
+                  Failed to load Simulation. Please ensure the Python simulation is running on port 8050.
                 </span>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={refreshSimulation}>
@@ -87,14 +87,14 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <p className="text-sm text-muted-foreground">Loading RailOptiSim...</p>
+                    <p className="text-sm text-muted-foreground">Loading...</p>
                   </div>
                 </div>
               )}
               <iframe
                 key={iframeKey}
                 src={SIMULATION_URL}
-                title="RailOptiSim Railway Simulation"
+                title="Vessel Logistic Tracking Simulation"
                 width="100%"
                 height="800px"
                 style={{
