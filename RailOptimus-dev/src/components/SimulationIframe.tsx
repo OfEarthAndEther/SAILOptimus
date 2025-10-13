@@ -13,7 +13,8 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
   const [isError, setIsError] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
 
-  const SIMULATION_URL = "http://localhost:8050";
+  // SAILoptimisation Dash app runs by default on port 5006 (see app.run_server in project)
+  const SIMULATION_URL = "http://localhost:5006";
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -31,6 +32,47 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
     setIframeKey(prev => prev + 1);
   };
 
+  // Lightweight reachability check: try to load the root favicon (fast) to detect if
+  // the local Dash server is reachable. This avoids CORS issues that occur when
+  // trying to fetch HTML from another origin.
+  const checkReachable = () => {
+    setIsLoading(true);
+    setIsError(false);
+
+    try {
+      const img = new Image();
+      // append cache-buster so refresh works
+      img.src = `${SIMULATION_URL}/_favicon.ico?_cb=${Date.now()}`;
+      const onSuccess = () => {
+        setIsLoading(false);
+        setIsError(false);
+        cleanup();
+      };
+      const onFail = () => {
+        setIsLoading(false);
+        setIsError(true);
+        cleanup();
+      };
+      const cleanup = () => {
+        img.onload = null;
+        img.onerror = null;
+      };
+      img.onload = onSuccess;
+      img.onerror = onFail;
+
+      // fallback timeout in case the request hangs
+      setTimeout(() => {
+        if (isLoading) {
+          setIsLoading(false);
+          setIsError(true);
+        }
+      }, 4000);
+    } catch (_e) {
+      setIsLoading(false);
+      setIsError(true);
+    }
+  };
+
   const openInNewTab = () => {
     window.open(SIMULATION_URL, '_blank');
   };
@@ -40,14 +82,14 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
       <Card className="h-full">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <CardTitle className="flex items-center gap-2">
-            <span>Simulation Window</span>
+            <span>Optimizer Window</span>
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </CardTitle>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={refreshSimulation}
+              onClick={() => { checkReachable(); refreshSimulation(); }}
               disabled={isLoading}
             >
               <RefreshCw className="h-4 w-4 mr-1" />
@@ -69,7 +111,7 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex flex-col gap-2">
                 <span>
-                  Failed to load Simulation. Please ensure the Python simulation is running on port 8050.
+                  Failed to load Simulation. Please ensure the SAILoptimisation app is running on port 5006 and is reachable (CORS allowed).
                 </span>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={refreshSimulation}>
@@ -105,7 +147,9 @@ const SimulationIframe: React.FC<SimulationIframeProps> = ({ className }) => {
                 onLoad={handleIframeLoad}
                 onError={handleIframeError}
                 allow="fullscreen"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                // Relax sandboxing so cross-origin Dash app can run interactive scripts.
+                // keep allow-same-origin and allow-scripts; allow-popups kept for open-in-new-tab
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
             </div>
           )}

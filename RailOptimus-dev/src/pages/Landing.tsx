@@ -139,7 +139,7 @@ export default function Landing() {
             Predict vessel, berthing, and train delays in real time and make data-driven decisions to streamline steel logistics and maximize operational efficiency.
           </p>
           <Button size="lg" variant="hero" asChild>
-            <Link to="/signup">Start Your Free Account</Link>
+            <Link to="/signup">Create Account</Link>
           </Button>
         </div>
       </section>

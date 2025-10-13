@@ -18,8 +18,10 @@ import {
   Clock,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   Activity,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -29,6 +31,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // --- Helpers ---
 const parseScheduleTime = (day: string, timeStr: string): Date | null => {
@@ -109,6 +112,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTrain, setSelectedTrain] = useState<any | null>(null);
+  // ML iframe state (SAIL LogisticsML / VesselFinal Flask app)
+  const [mlIsLoading, setMlIsLoading] = useState<boolean>(true);
+  const [mlIsError, setMlIsError] = useState<boolean>(false);
+  const [mlIframeKey, setMlIframeKey] = useState<number>(0);
+  const ML_PORT = 5000; // VesselFinal Flask app default port
+  const getMlUrl = () => {
+    if (typeof window === "undefined") return `http://localhost:${ML_PORT}`;
+    const host = window.location.hostname || "localhost";
+    return `${window.location.protocol}//${host}:${ML_PORT}`;
+  };
 
   // Fetch static schedule once
   useEffect(() => {
@@ -193,6 +206,75 @@ export default function Dashboard() {
     return () => clearInterval(id);
   }, [allTrainRoutes]);
 
+  // Check ML app reachability using a hidden iframe ping (avoids relying on a favicon)
+  const checkMlReachable = () => {
+    setMlIsLoading(true);
+    setMlIsError(false);
+    if (typeof document === "undefined") {
+      // Shouldn't happen in browser, but be safe for SSR
+      setMlIsLoading(false);
+      return;
+    }
+
+    const url = getMlUrl();
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "absolute";
+    iframe.style.left = "-9999px";
+    iframe.style.width = "1px";
+    iframe.style.height = "1px";
+    iframe.src = url;
+
+    let settled = false;
+    const cleanup = () => {
+      try {
+        iframe.onload = null;
+        iframe.onerror = null;
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      } catch (_e) {}
+    };
+
+    iframe.onload = () => {
+      if (settled) return;
+      settled = true;
+      setMlIsLoading(false);
+      setMlIsError(false);
+      cleanup();
+    };
+
+    iframe.onerror = () => {
+      if (settled) return;
+      settled = true;
+      setMlIsLoading(false);
+      setMlIsError(true);
+      cleanup();
+    };
+
+    document.body.appendChild(iframe);
+
+    // fallback timeout
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setMlIsLoading(false);
+      setMlIsError(true);
+      cleanup();
+    }, 4000);
+  };
+
+  const refreshMl = () => {
+    setMlIsLoading(true);
+    setMlIsError(false);
+    setMlIframeKey((k) => k + 1);
+  };
+
+  const openMlInNewTab = () => window.open(getMlUrl(), "_blank");
+
+  useEffect(() => {
+    // initial reachability check
+    checkMlReachable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -214,19 +296,72 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Logistics Control Dashboard</h1>
-          <p className="text-muted-foreground">
-            Real-time railway section monitoring and control
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="w-1/4 text-left">
+          <h1 className="text-3xl font-bold">ETA and Delay Predictor</h1>
+          <p className="text-muted-foreground">Real-time port-plant logistics delay prediction</p>
         </div>
-        <div className="text-right">
-          <p className="text-sm text-muted-foreground">Current Time</p>
-          <p className="text-2xl font-mono font-bold">
-            {currentTime.toLocaleTimeString()}
-          </p>
+        <div className="w-2/4" />
+        <div className="w-1/4 flex flex-col items-end gap-2">
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Current Time</p>
+            <p className="text-2xl font-mono font-bold">{currentTime.toLocaleTimeString()}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => { checkMlReachable(); refreshMl(); }} disabled={mlIsLoading}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+            <Button size="sm" variant="outline" onClick={openMlInNewTab}>
+              Open
+            </Button>
+          </div>
         </div>
+      </div>
+      {/* Embedded ML model (SAIL LogisticsML / VesselFinal) */}
+      <div className="mt-6">
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <div />
+          </CardHeader>
+          <CardContent className="p-0">
+            {mlIsError ? (
+              <Alert className="m-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex flex-col gap-2">
+                  <span>Failed to load ML model UI. Ensure the SAIL LogisticsML app is running on port 5000.</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => { refreshMl(); checkMlReachable(); }}>Retry</Button>
+                    <Button size="sm" variant="outline" onClick={openMlInNewTab}>Open Directly</Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="relative">
+                {mlIsLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <p className="text-sm text-muted-foreground">Loading ML model...</p>
+                    </div>
+                  </div>
+                )}
+                <iframe
+                  key={mlIframeKey}
+                  src={getMlUrl()}
+                  title="SAIL LogisticsML - VesselFinal"
+                  width="100%"
+                  height="600px"
+                  style={{ border: 'none', minHeight: '600px' }}
+                  onLoad={() => { setMlIsLoading(false); setMlIsError(false); }}
+                  onError={() => { setMlIsLoading(false); setMlIsError(true); }}
+                  allow="fullscreen"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

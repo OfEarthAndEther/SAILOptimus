@@ -22,7 +22,7 @@ interface AppLayoutProps {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Simulation", href: "/simulation", icon: PlayCircle },
+  { name: "Optimizer", href: "/simulation", icon: PlayCircle },
   { name: "Map", href: "/map", icon: MapPin },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

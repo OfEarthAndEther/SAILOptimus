@@ -130,7 +130,7 @@ export default function Signup() {
                   id="section"
                   name="section"
                   type="text"
-                  placeholder="e.g., A1, B2, C3"
+                  placeholder="e.g. Haldia,Paradip,Vishakapatnam"
                   value={formData.section}
                   onChange={handleChange}
                   required

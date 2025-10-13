@@ -65,7 +65,7 @@ export default function Settings() {
                 <MapPin className="absolute left-3 top-3 h-6 w-6 text-muted-foreground" />
                 <Input
                   id="section"
-                  value={user?.section || ""}
+                  value={user?.section || "Haldia"}
                   className="pl-10 text-base disabled:opacity-100 disabled:text-foreground/80"
                   disabled
                 />
