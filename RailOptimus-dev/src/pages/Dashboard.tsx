@@ -228,206 +228,206 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-border shadow-soft">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Active Vessels
-              </p>
-              <p className="text-2xl font-bold text-foreground">
-                {liveTrainData.length}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
-              <Ship className="h-6 w-6 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border shadow-soft">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">On Time</p>
-              <p className="text-2xl font-bold text-success">
-                {liveTrainData.filter((t) => t.status === "on-time").length}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-success/10 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-success" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border shadow-soft">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Delayed</p>
-              <p className="text-2xl font-bold text-warning">
-                {liveTrainData.filter((t) => t.status !== "on-time").length}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-warning/10 rounded-lg">
-              <Clock className="h-6 w-6 text-warning" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Live train list */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Anchor className="h-5 w-5" /> Live Vessel Tracking
-              </CardTitle>
-              <CardDescription>
-                <span className="pl-7">
-                  Current vessel activity at the port
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="relative max-h-[calc(100vh-450px)] overflow-y-auto pr-2">
-                <div className="space-y-3">
-                  {liveTrainData.length > 0 ? (
-                    liveTrainData.map((train) => (
-                      <div
-                        key={train.id}
-                        onClick={() => setSelectedTrain(train)}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:shadow-soft transition-shadow cursor-pointer"
-                      >
-                        <div className="flex items-center gap-4">
-                          {getStatusIcon(train.status)}
-                          <div>
-                            <p className="font-semibold">{train.id}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {train.train_name}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant={getStatusColor(train.status) as any}>
-                          {train.status === "on-time"
-                            ? "On Time"
-                            : train.status.replace("-", " ")}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No active trains in this section at the moment.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right column */}
-        <div className="grid grid-cols-1 gap-6">
-          <AIPredictorCard />
-        </div>
-      </div>
-
-      {/* Modal showing full schedule on click */}
-      <Dialog
-        open={!!selectedTrain}
-        onOpenChange={(open) => {
-          if (!open) setSelectedTrain(null);
-        }}
-      >
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              Train {selectedTrain?.id} — {selectedTrain?.train_name}
-            </DialogTitle>
-            <DialogDescription>
-              Full schedule (green = passed, blue = current, gray = upcoming)
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedTrain && (() => {
-            const now = new Date();
-
-            return (
-              <div className="space-y-2 mt-4">
-                {selectedTrain.stops.map((stop: any, idx: number) => {
-                  const arrival = parseScheduleTime(stop.day, stop.arrive);
-                  const depart = parseScheduleTime(stop.day, stop.depart);
-
-                  let status: "past" | "current" | "future" = "future";
-                  if (depart && now > depart) {
-                    status = "past";
-                  } else if (
-                    (arrival && now >= arrival && (!depart || now <= depart)) ||
-                    (depart && now >= depart && idx === selectedTrain.stops.length - 1)
-                  ) {
-                    status = "current";
-                  }
-
-                  const bgColor =
-                    status === "past"
-                      ? "bg-green-50 border-green-200"
-                      : status === "current"
-                      ? "bg-blue-50 border-blue-300"
-                      : "bg-gray-50 border-border";
-
-                  const stopName =
-                    stop.source_stn_name ||
-                    stop.name ||
-                    stop.station_name ||
-                    stop.fullname ||
-                    stop.code;
-
-                  return (
-                    <div
-                      key={stop.code + idx}
-                      className={`flex items-center justify-between p-3 rounded border ${bgColor}`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{stopName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({stop.source_stn_code || stop.code})
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Arrive: {stop.arrive ?? "-"} • Depart:{" "}
-                          {stop.depart ?? "-"}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {status === "past" && (
-                          <span className="text-sm text-green-600">ARRIVED</span>
-                        )}
-                        {status === "current" && (
-                          <span className="text-sm text-blue-600 font-semibold">
-                            CURRENT
-                          </span>
-                        )}
-                        {status === "future" && (
-                          <span className="text-sm text-gray-400">UPCOMING</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex justify-end mt-4">
-                  <Button onClick={() => setSelectedTrain(null)}>Close</Button>
-                </div>
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
+// //      {/* Stats Cards */}
+//       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+//         <Card className="border-border shadow-soft">
+//           <CardContent className="p-6 flex items-center justify-between">
+//             <div>
+//               <p className="text-sm font-medium text-muted-foreground">
+//                 Active Vessels
+//               </p>
+//               <p className="text-2xl font-bold text-foreground">
+//                 {liveTrainData.length}
+//               </p>
+//             </div>
+//             <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg">
+//               <Ship className="h-6 w-6 text-primary" />
+//             </div>
+//           </CardContent>
+//         </Card>
+
+//         <Card className="border-border shadow-soft">
+//           <CardContent className="p-6 flex items-center justify-between">
+//             <div>
+//               <p className="text-sm font-medium text-muted-foreground">On Time</p>
+//               <p className="text-2xl font-bold text-success">
+//                 {liveTrainData.filter((t) => t.status === "on-time").length}
+//               </p>
+//             </div>
+//             <div className="flex items-center justify-center w-12 h-12 bg-success/10 rounded-lg">
+//               <CheckCircle className="h-6 w-6 text-success" />
+//             </div>
+//           </CardContent>
+//         </Card>
+
+//         <Card className="border-border shadow-soft">
+//           <CardContent className="p-6 flex items-center justify-between">
+//             <div>
+//               <p className="text-sm font-medium text-muted-foreground">Delayed</p>
+//               <p className="text-2xl font-bold text-warning">
+//                 {liveTrainData.filter((t) => t.status !== "on-time").length}
+//               </p>
+//             </div>
+//             <div className="flex items-center justify-center w-12 h-12 bg-warning/10 rounded-lg">
+//               <Clock className="h-6 w-6 text-warning" />
+//             </div>
+//           </CardContent>
+//         </Card>
+//       </div>
+
+//       {/* Main grid */}
+//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+//         {/* Live train list */}
+//         <div className="lg:col-span-2">
+//           <Card>
+//             <CardHeader>
+//               <CardTitle className="flex items-center gap-2">
+//                 <Anchor className="h-5 w-5" /> Live Vessel Tracking
+//               </CardTitle>
+//               <CardDescription>
+//                 <span className="pl-7">
+//                   Current vessel activity at the port
+//                 </span>
+//               </CardDescription>
+//             </CardHeader>
+//             <CardContent>
+//               <div className="relative max-h-[calc(100vh-450px)] overflow-y-auto pr-2">
+//                 <div className="space-y-3">
+//                   {liveTrainData.length > 0 ? (
+//                     liveTrainData.map((train) => (
+//                       <div
+//                         key={train.id}
+//                         onClick={() => setSelectedTrain(train)}
+//                         className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:shadow-soft transition-shadow cursor-pointer"
+//                       >
+//                         <div className="flex items-center gap-4">
+//                           {getStatusIcon(train.status)}
+//                           <div>
+//                             <p className="font-semibold">{train.id}</p>
+//                             <p className="text-sm text-muted-foreground">
+//                               {train.train_name}
+//                             </p>
+//                           </div>
+//                         </div>
+//                         <Badge variant={getStatusColor(train.status) as any}>
+//                           {train.status === "on-time"
+//                             ? "On Time"
+//                             : train.status.replace("-", " ")}
+//                         </Badge>
+//                       </div>
+//                     ))
+//                   ) : (
+//                     <div className="text-center py-8 text-muted-foreground">
+//                       <p>No active trains in this section at the moment.</p>
+//                     </div>
+//                   )}
+//                 </div>
+//               </div>
+//             </CardContent>
+//           </Card>
+//         </div>
+
+//         {/* Right column */}
+//         <div className="grid grid-cols-1 gap-6">
+//           <AIPredictorCard />
+//         </div>
+//       </div>
+
+//       {/* Modal showing full schedule on click */}
+//       <Dialog
+//         open={!!selectedTrain}
+//         onOpenChange={(open) => {
+//           if (!open) setSelectedTrain(null);
+//         }}
+//       >
+//         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+//           <DialogHeader>
+//             <DialogTitle>
+//               Train {selectedTrain?.id} — {selectedTrain?.train_name}
+//             </DialogTitle>
+//             <DialogDescription>
+//               Full schedule (green = passed, blue = current, gray = upcoming)
+//             </DialogDescription>
+//           </DialogHeader>
+
+//           {selectedTrain && (() => {
+//             const now = new Date();
+
+//             return (
+//               <div className="space-y-2 mt-4">
+//                 {selectedTrain.stops.map((stop: any, idx: number) => {
+//                   const arrival = parseScheduleTime(stop.day, stop.arrive);
+//                   const depart = parseScheduleTime(stop.day, stop.depart);
+
+//                   let status: "past" | "current" | "future" = "future";
+//                   if (depart && now > depart) {
+//                     status = "past";
+//                   } else if (
+//                     (arrival && now >= arrival && (!depart || now <= depart)) ||
+//                     (depart && now >= depart && idx === selectedTrain.stops.length - 1)
+//                   ) {
+//                     status = "current";
+//                   }
+
+//                   const bgColor =
+//                     status === "past"
+//                       ? "bg-green-50 border-green-200"
+//                       : status === "current"
+//                       ? "bg-blue-50 border-blue-300"
+//                       : "bg-gray-50 border-border";
+
+//                   const stopName =
+//                     stop.source_stn_name ||
+//                     stop.name ||
+//                     stop.station_name ||
+//                     stop.fullname ||
+//                     stop.code;
+
+//                   return (
+//                     <div
+//                       key={stop.code + idx}
+//                       className={`flex items-center justify-between p-3 rounded border ${bgColor}`}
+//                     >
+//                       <div>
+//                         <div className="flex items-center gap-2">
+//                           <span className="font-medium">{stopName}</span>
+//                           <span className="text-xs text-muted-foreground">
+//                             ({stop.source_stn_code || stop.code})
+//                           </span>
+//                         </div>
+//                         <div className="text-xs text-muted-foreground">
+//                           Arrive: {stop.arrive ?? "-"} • Depart:{" "}
+//                           {stop.depart ?? "-"}
+//                         </div>
+//                       </div>
+//                       <div className="text-right">
+//                         {status === "past" && (
+//                           <span className="text-sm text-green-600">ARRIVED</span>
+//                         )}
+//                         {status === "current" && (
+//                           <span className="text-sm text-blue-600 font-semibold">
+//                             CURRENT
+//                           </span>
+//                         )}
+//                         {status === "future" && (
+//                           <span className="text-sm text-gray-400">UPCOMING</span>
+//                         )}
+//                       </div>
+//                     </div>
+//                   );
+//                 })}
+//                 <div className="flex justify-end mt-4">
+//                   <Button onClick={() => setSelectedTrain(null)}>Close</Button>
+//                 </div>
+//               </div>
+//             );
+//           })()}
+//         </DialogContent>
+//       </Dialog>
 
 
 
