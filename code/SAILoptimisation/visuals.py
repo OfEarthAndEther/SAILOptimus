@@ -22,13 +22,13 @@ class LogisticsVisualizer:
         # Define KPI configurations with detailed explanations
         kpi_configs = [
             {
-                'title': 'Total Cost',
+                'title': 'Total Dispatch Cost',
                 'key': 'total_cost',
                 'format': 'currency',
                 'color': 'danger',
                 'tooltip_title': 'Total logistics cost',
-                'formula': 'Port Handling + Rail Transport + Demurrage',
-                'description': 'Sum of all operational costs across the entire supply chain',
+                'formula': 'Port Handling + Rail Transport + Demurrage + Storage + Penalties',
+                'description': 'Dispatch-focused spend excluding ocean freight and other fixed voyage costs',
                 'factors': [
                     'Port handling fees per MT',
                     'Rail transport costs per MT-km',

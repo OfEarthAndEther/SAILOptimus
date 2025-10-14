@@ -272,8 +272,7 @@ class CostCalculator:
                         pd.Series(vessel_data), assignment['actual_berth_time'], assignment['planned_berth_time']
                     )
         
-        costs['total'] = (
-            costs['ocean_freight'] +
+        dispatch_total = (
             costs['port_handling'] +
             costs['storage'] +
             costs['rail_transport'] +
@@ -281,6 +280,10 @@ class CostCalculator:
             costs['rerouting_penalty'] +
             costs['delay_penalty']
         )
+
+        costs['dispatch_total'] = dispatch_total
+        costs['grand_total'] = dispatch_total + costs['ocean_freight']
+        costs['total'] = dispatch_total
         return costs
 
 class ScenarioGenerator:
@@ -365,20 +368,50 @@ def calculate_kpis(assignments: List[Dict], vessels_df: pd.DataFrame,
         # Include cost component breakdown if available
         if 'cost_components' in simulation_results:
             cost_components = simulation_results['cost_components']
-            kpis.setdefault('total_cost', cost_components.get('total', 0.0))
+            dispatch_total = (
+                cost_components.get('port_handling', 0.0) +
+                cost_components.get('rail_transport', 0.0) +
+                cost_components.get('demurrage', 0.0) +
+                cost_components.get('storage', 0.0) +
+                cost_components.get('rerouting_penalty', 0.0) +
+                cost_components.get('delay_penalty', 0.0)
+            )
+            ocean_cost = cost_components.get('ocean_freight', 0.0)
+            comprehensive_total = dispatch_total + ocean_cost
+
+            kpis.setdefault('total_cost', cost_components.get('total', dispatch_total))
+            kpis['dispatch_cost'] = cost_components.get('total', dispatch_total)
+            kpis['ocean_freight_cost'] = ocean_cost
+            kpis['comprehensive_cost'] = comprehensive_total
             kpis.setdefault('demurrage_cost', cost_components.get('demurrage', 0.0))
             kpis.setdefault('port_handling_cost', cost_components.get('port_handling', 0.0))
             kpis.setdefault('rail_transport_cost', cost_components.get('rail_transport', 0.0))
+            if 'storage' in cost_components:
+                kpis.setdefault('storage_cost', cost_components.get('storage', 0.0))
+            if 'rerouting_penalty' in cost_components:
+                kpis.setdefault('rerouting_penalty_cost', cost_components.get('rerouting_penalty', 0.0))
+            if 'delay_penalty' in cost_components:
+                kpis.setdefault('delay_penalty_cost', cost_components.get('delay_penalty', 0.0))
 
     # If we don't have simulation metrics yet, compute cost metrics from assignments
     elif assignments and ports_df is not None and rail_costs_df is not None:
         cost_components = CostCalculator.calculate_total_logistics_cost(
             assignments, vessels_df, ports_df, rail_costs_df
         )
-        kpis['total_cost'] = cost_components['total']
+        dispatch_total = cost_components.get('dispatch_total', cost_components.get('total', 0.0))
+        ocean_cost = cost_components.get('ocean_freight', 0.0)
+        comprehensive_total = cost_components.get('grand_total', dispatch_total + ocean_cost)
+
+        kpis['total_cost'] = dispatch_total
+        kpis['dispatch_cost'] = dispatch_total
+        kpis['ocean_freight_cost'] = ocean_cost
+        kpis['comprehensive_cost'] = comprehensive_total
         kpis['demurrage_cost'] = cost_components['demurrage']
         kpis['port_handling_cost'] = cost_components['port_handling']
         kpis['rail_transport_cost'] = cost_components['rail_transport']
+        kpis['storage_cost'] = cost_components.get('storage', 0.0)
+        kpis['rerouting_penalty_cost'] = cost_components.get('rerouting_penalty', 0.0)
+        kpis['delay_penalty_cost'] = cost_components.get('delay_penalty', 0.0)
 
         # Operational estimates directly from assignments
         total_delivered = sum(a.get('cargo_mt', 0.0) for a in assignments)

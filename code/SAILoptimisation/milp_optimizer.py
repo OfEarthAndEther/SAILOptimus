@@ -200,7 +200,7 @@ class MILPOptimizer:
             if p is not None and p != self.primary_port_map.get(v)
         ])
 
-        prob += ocean_freight_cost + port_handling_cost + rail_transport_cost + total_demurrage + storage_cost + rerouting_penalty
+        prob += port_handling_cost + rail_transport_cost + total_demurrage + storage_cost + rerouting_penalty
         
         # Constraints
         
@@ -519,8 +519,8 @@ class MILPOptimizer:
         
         # Calculate baseline costs (now includes demurrage from delays)
         baseline_cost = self._calculate_assignment_cost(assignments)
-        
-        print(f"Baseline FCFS cost: ${baseline_cost:,.2f}")
+
+        print(f"Baseline FCFS dispatch cost: ${baseline_cost:,.2f}")
         
         return {
             'status': 'Baseline_FCFS',
@@ -532,7 +532,8 @@ class MILPOptimizer:
     
     def _calculate_assignment_cost(self, assignments: List[Dict]) -> float:
         """Calculate total cost for a set of assignments"""
-        total_cost = 0.0
+        total_dispatch_cost = 0.0
+        total_ocean_cost = 0.0
         
         for assignment in assignments:
             port_id = assignment['port_id']
@@ -572,18 +573,19 @@ class MILPOptimizer:
             storage_cost = cargo_mt * billable_days * storage_rate
 
             ocean_freight = cargo_mt * self.vessel_freight_inr.get(vessel_id, 0.0)
+            total_ocean_cost += ocean_freight
             
             secondary_penalty = 0.0
             if port_id != self.primary_port_map.get(vessel_id):
                 secondary_penalty = cargo_mt * self.secondary_port_penalty_per_mt
 
-            total_cost += (
+            total_dispatch_cost += (
                 port_cost +
                 rail_cost +
                 demurrage_cost +
                 secondary_penalty +
-                storage_cost +
-                ocean_freight
+                storage_cost
             )
-        
-        return total_cost
+
+        print(f"Baseline ocean freight (excluded from dispatch cost): {total_ocean_cost:,.2f}")
+        return total_dispatch_cost

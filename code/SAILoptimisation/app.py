@@ -1180,8 +1180,12 @@ def run_optimization(baseline_clicks, optimized_clicks, stored_data, opt_method,
             # Calculate savings if baseline exists
             savings_msg = ""
             if baseline_solution:
-                baseline_cost = baseline_solution.get('objective_value', 0)
-                optimized_cost = solution.get('objective_value', 0)
+                baseline_cost = baseline_solution.get('kpis', {}).get('total_cost')
+                if baseline_cost in (None, "") or pd.isna(baseline_cost):
+                    baseline_cost = baseline_solution.get('objective_value', 0)
+                optimized_cost = solution.get('kpis', {}).get('total_cost')
+                if optimized_cost in (None, "") or pd.isna(optimized_cost):
+                    optimized_cost = solution.get('objective_value', 0)
                 
                 # Sanity checks
                 if baseline_cost <= 0:
@@ -1415,7 +1419,7 @@ def update_kpi_cards(stored_solution, stored_simulation, stored_data):
             # Determine delta color
             delta_color = "secondary"
             if card_data['delta'] is not None and card_data['delta'] != 0:
-                if card_data['title'] in ['Total Cost', 'Demurrage Cost', 'Avg Vessel Wait']:
+                if card_data['title'] in ['Total Dispatch Cost', 'Demurrage Cost', 'Avg Vessel Wait']:
                     delta_color = "success" if card_data['delta'] < 0 else "danger"
                 else:
                     delta_color = "success" if card_data['delta'] > 0 else "danger"
@@ -1815,14 +1819,25 @@ def prepare_scenario_comparison(stored_solution):
         costs: List[float] = []
         vessels: List[int] = []
 
+        def extract_total_cost(payload: Optional[Dict]) -> float:
+            if not payload or not isinstance(payload, dict):
+                return 0.0
+            kpis = payload.get("kpis") or {}
+            total = kpis.get("dispatch_cost")
+            if total in (None, "") or pd.isna(total):
+                total = kpis.get("total_cost")
+            if total in (None, "") or pd.isna(total):
+                total = payload.get("objective_value", 0)
+            return float(total or 0)
+
         if baseline_solution:
             scenarios.append("Baseline (FCFS)")
-            costs.append(float(baseline_solution.get("objective_value", 0) or 0))
+            costs.append(extract_total_cost(baseline_solution))
             vessels.append(len(baseline_solution.get("assignments", [])))
 
         if current_solution:
             scenarios.append("Optimized (AI)")
-            costs.append(float(current_solution.get("objective_value", 0) or 0))
+            costs.append(extract_total_cost(current_solution))
             vessels.append(len(current_solution.get("assignments", [])))
 
         if len(scenarios) < 2:
@@ -1871,6 +1886,7 @@ def prepare_scenario_comparison(stored_solution):
                     dbc.CardHeader("Baseline (FCFS)", className="bg-secondary text-white"),
                     dbc.CardBody([
                         html.H4(format_currency(baseline_cost), className="text-secondary"),
+                        html.Small("Dispatch cost", className="text-muted d-block mb-2"),
                         html.P(f"{vessels[0]} vessels", className="text-muted mb-0")
                     ])
                 ])
@@ -1880,6 +1896,7 @@ def prepare_scenario_comparison(stored_solution):
                     dbc.CardHeader("Optimized (AI)", className="bg-success text-white"),
                     dbc.CardBody([
                         html.H4(format_currency(optimized_cost), className="text-success"),
+                        html.Small("Dispatch cost", className="text-muted d-block mb-2"),
                         html.P(f"{vessels[1]} vessels", className="text-muted mb-0")
                     ])
                 ])
@@ -1889,6 +1906,7 @@ def prepare_scenario_comparison(stored_solution):
                     dbc.CardHeader("Savings impact", className=f"bg-{savings_color} text-white"),
                     dbc.CardBody([
                         html.H4(format_currency(savings), className=f"text-{savings_color}"),
+                        html.Small("Dispatch savings", className="text-muted d-block mb-2"),
                         html.P(savings_text, className="text-muted mb-0")
                     ])
                 ])
@@ -1897,7 +1915,7 @@ def prepare_scenario_comparison(stored_solution):
 
         fig = make_subplots(
             rows=1, cols=2,
-            subplot_titles=("Cost Comparison", "Vessel Utilization"),
+            subplot_titles=("Dispatch Cost Comparison", "Vessel Utilization"),
             specs=[[{"type": "bar"}, {"type": "bar"}]]
         )
 
@@ -1908,7 +1926,7 @@ def prepare_scenario_comparison(stored_solution):
                 marker=dict(color=["#6c757d", "#28a745"]),
                 text=[format_currency(c) for c in costs],
                 textposition="outside",
-                name="Cost"
+                name="Dispatch Cost"
             ),
             row=1, col=1
         )
@@ -1932,18 +1950,18 @@ def prepare_scenario_comparison(stored_solution):
             template="plotly_white",
             margin=dict(l=60, r=40, t=70, b=60)
         )
-        fig.update_yaxes(title_text="Total Cost (₹)", row=1, col=1)
+        fig.update_yaxes(title_text="Dispatch Cost (₹)", row=1, col=1)
         fig.update_yaxes(title_text="Vessels Processed", row=1, col=2)
 
         meta = html.Div([
-            html.Span("Savings vs baseline:", className="text-muted me-1"),
+            html.Span("Dispatch savings vs baseline:", className="text-muted me-1"),
             html.Span(
                 f"{format_currency(savings)} ({savings_text})",
                 className=f"text-{savings_color} fw-semibold"
             ),
             html.Br(),
             html.Span(
-                f"Baseline: {format_currency(baseline_cost)} | Optimized: {format_currency(optimized_cost)}",
+                f"Baseline dispatch: {format_currency(baseline_cost)} | Optimized dispatch: {format_currency(optimized_cost)}",
                 className="text-muted"
             ),
             html.Br(),
@@ -2024,7 +2042,7 @@ def toggle_scenario_modal(open_clicks, close_clicks, is_open, stored_solution):
 )
 def update_cost_breakdown(stored_solution, stored_simulation, stored_data):
     """Update cost breakdown chart - now truly dynamic"""
-    if not stored_solution:
+    if not stored_solution or not stored_data:
         return go.Figure().add_annotation(
             text="Run an optimization to see cost breakdown",
             xref="paper", yref="paper",
@@ -2035,74 +2053,80 @@ def update_cost_breakdown(stored_solution, stored_simulation, stored_data):
     try:
         solution = json.loads(stored_solution)
         data_dict = json.loads(stored_data)
-        
-        # Calculate detailed costs from solution
+
         assignments = solution.get('assignments', [])
-        vessels_df = pd.DataFrame(data_dict['vessels'])
-        ports_df = pd.DataFrame(data_dict['ports'])
-        rail_costs_df = pd.DataFrame(data_dict['rail_costs'])
-        
-        # Calculate component costs
-        port_handling_cost = 0
-        rail_transport_cost = 0
-        demurrage_cost = 0
-        
-        for assign in assignments:
-            vessel_id = assign.get('vessel_id')
-            port_id = assign.get('port_id')
-            plant_id = assign.get('plant_id')
-            cargo_mt = assign.get('cargo_mt', 0)
-            
-            # Port handling
-            port_row = ports_df[ports_df['port_id'] == port_id]
-            if not port_row.empty:
-                handling_rate = port_row.iloc[0]['handling_cost_per_mt']
-                port_handling_cost += cargo_mt * handling_rate
-            
-            # Rail transport
-            rail_row = rail_costs_df[
-                (rail_costs_df['port_id'] == port_id) & 
-                (rail_costs_df['plant_id'] == plant_id)
-            ]
-            if not rail_row.empty:
-                rail_rate = rail_row.iloc[0]['cost_per_mt']
-                rail_transport_cost += cargo_mt * rail_rate
-            
-            # Demurrage (simplified - would need actual wait times)
-            vessel_row = vessels_df[vessels_df['vessel_id'] == vessel_id]
-            if not vessel_row.empty:
-                demurrage_rate = vessel_row.iloc[0]['demurrage_rate']
-                # Estimate 0.5 day average delay
-                demurrage_cost += demurrage_rate * 12  # 12 hours estimated wait
-        
-        # Create pie chart
-        labels = ['Port Handling', 'Rail Transport', 'Demurrage', 'Other']
-        values = [
-            port_handling_cost,
-            rail_transport_cost,
-            demurrage_cost,
-            max(0, solution.get('objective_value', 0) - port_handling_cost - rail_transport_cost - demurrage_cost)
-        ]
-        
+        vessels_df = pd.DataFrame(data_dict.get('vessels', []))
+        plants_df = pd.DataFrame(data_dict.get('plants', []))
+        ports_df = pd.DataFrame(data_dict.get('ports', []))
+        rail_costs_df = pd.DataFrame(data_dict.get('rail_costs', []))
+
+        sim_results = parse_solution_payload(stored_simulation)
+
+        cost_kpis: Dict[str, float] = {}
+        total_cost = None
+
+        if isinstance(sim_results, dict) and sim_results.get('cost_components'):
+            cost_components = sim_results.get('cost_components', {})
+            total_cost = float(cost_components.get('total', 0) or 0)
+            cost_kpis = {
+                'port_handling_cost': float(cost_components.get('port_handling', 0) or 0),
+                'rail_transport_cost': float(cost_components.get('rail_transport', 0) or 0),
+                'demurrage_cost': float(cost_components.get('demurrage', 0) or 0)
+            }
+        else:
+            cost_kpis = solution.get('kpis', {}) if isinstance(solution, dict) else {}
+            if not cost_kpis:
+                cost_kpis = calculate_kpis(
+                    assignments,
+                    vessels_df,
+                    plants_df,
+                    None,
+                    ports_df,
+                    rail_costs_df
+                )
+            total_cost = float(cost_kpis.get('total_cost', solution.get('objective_value', 0) or 0))
+
+        port_cost = float(cost_kpis.get('port_handling_cost', 0) or 0)
+        rail_cost = float(cost_kpis.get('rail_transport_cost', 0) or 0)
+        demurrage_cost = float(cost_kpis.get('demurrage_cost', 0) or 0)
+        other_cost = max(0.0, total_cost - (port_cost + rail_cost + demurrage_cost))
+
+        if total_cost <= 0 and (port_cost + rail_cost + demurrage_cost) <= 0:
+            return go.Figure().add_annotation(
+                text="No cost data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=14, color="gray")
+            )
+
+        labels = ['Port Handling', 'Rail Transport', 'Demurrage']
+        values = [port_cost, rail_cost, demurrage_cost]
+        colors = ['#007bff', '#28a745', '#ffc107']
+
+        if other_cost > 0.01:
+            labels.append('Other')
+            values.append(other_cost)
+            colors.append('#6c757d')
+
         fig = go.Figure(data=[go.Pie(
             labels=labels,
             values=values,
             hole=0.4,
-            marker=dict(colors=['#007bff', '#28a745', '#ffc107', '#6c757d']),
+            marker=dict(colors=colors),
             textinfo='label+percent',
             textposition='outside'
         )])
-        
+
         fig.update_layout(
             title={
-                'text': f'Cost Breakdown - Total: {format_currency(sum(values))}',
+                'text': f'Dispatch Cost Breakdown - Total: {format_currency(total_cost)}',
                 'x': 0.5,
                 'xanchor': 'center'
             },
             showlegend=True,
             height=450
         )
-        
+
         return fig
         
     except Exception as e:
@@ -2430,7 +2454,7 @@ def update_simulation_comparator(stored_simulation, stored_solution, stored_data
             raw_delta_pct = card.get('delta_pct')
 
             if raw_delta is not None and raw_delta != 0:
-                if card['title'] in ['Total Cost', 'Demurrage Cost', 'Avg Vessel Wait']:
+                if card['title'] in ['Total Cost', 'Total Dispatch Cost', 'Demurrage Cost', 'Avg Vessel Wait']:
                     delta_color = "success" if raw_delta < 0 else "danger"
                 else:
                     delta_color = "success" if raw_delta > 0 else "danger"
@@ -2598,17 +2622,17 @@ def update_simulation_comparator(stored_simulation, stored_solution, stored_data
     summary = html.Div([
         dbc.Card([
             dbc.CardBody([
-                html.Div("Cost realism check", className="text-muted small mb-2"),
+                html.Div("Dispatch cost realism check", className="text-muted small mb-2"),
                 html.Div([
-                    html.Div("Planned cost", className="text-muted small"),
+                    html.Div("Planned dispatch cost", className="text-muted small"),
                     html.Div(format_currency(plan_cost) if plan_cost else "—", className="fw-semibold")
                 ], className="d-flex justify-content-between"),
                 html.Div([
-                    html.Div("Simulated cost", className="text-muted small"),
+                    html.Div("Simulated dispatch cost", className="text-muted small"),
                     html.Div(format_currency(sim_cost) if sim_cost else "—", className="fw-semibold")
                 ], className="d-flex justify-content-between"),
                 html.Div([
-                    html.Div("Delta", className="text-muted small"),
+                    html.Div("Dispatch delta", className="text-muted small"),
                     html.Div([
                         dbc.Badge(
                             fmt_currency_signed(cost_delta),
@@ -2644,9 +2668,13 @@ def update_simulation_comparator(stored_simulation, stored_solution, stored_data
         )
     ])
 
+    sim_cards = LogisticsVisualizer.create_kpi_cards(sim_kpis, plan_kpis)
+    if sim_cards:
+        sim_cards[0]['title'] = "Total Dispatch Cost"
+
     kpi_panel = html.Div([
         html.Div("Simulated KPIs vs planned expectations", className="text-muted small fw-semibold mb-2"),
-        make_kpi_grid(LogisticsVisualizer.create_kpi_cards(sim_kpis, plan_kpis))
+        make_kpi_grid(sim_cards)
     ])
 
     component_labels = ["Port Handling", "Rail Transport", "Demurrage"]
@@ -2847,47 +2875,79 @@ def update_quick_insights(stored_solution, stored_simulation, stored_data):
     try:
         solution = json.loads(stored_solution)
         data_dict = json.loads(stored_data)
-        
+
+        vessels_df = pd.DataFrame(data_dict.get('vessels', []))
+        plants_df = pd.DataFrame(data_dict.get('plants', []))
+        ports_df = pd.DataFrame(data_dict.get('ports', []))
+        rail_costs_df = pd.DataFrame(data_dict.get('rail_costs', []))
+
         insights = []
-        
-        # Cost efficiency insight
-        total_cost = solution.get('objective_value', 0)
-        if baseline_solution:
-            baseline_cost = baseline_solution.get('objective_value', 0)
-            if baseline_cost > 0:
-                improvement = ((baseline_cost - total_cost) / baseline_cost) * 100
-                if improvement > 10:
-                    insights.append(dbc.Alert(
-                        f"Cost reduced by {improvement:.1f}% versus the baseline solution.",
-                        color="success",
-                        className="mb-2"
-                    ))
-                elif improvement > 0:
-                    insights.append(dbc.Alert(
-                        f"Cost reduced by {improvement:.1f}% versus baseline.",
-                        color="info",
-                        className="mb-2"
-                    ))
-        
-        # Vessel utilization insight
+
         assignments = solution.get('assignments', [])
-        if assignments:
-            vessels_df = pd.DataFrame(data_dict['vessels'])
-            processed = len(assignments)
-            total = len(vessels_df)
-            utilization = (processed / total) * 100
-            
-            insights.append(
-                dbc.Alert(
-                    f"Processing {processed} of {total} vessels ({utilization:.0f}% utilization).",
-                    color="primary" if utilization > 80 else "warning",
-                    className="mb-2"
-                )
+
+        solution_kpis = solution.get('kpis', {}) if isinstance(solution, dict) else {}
+        if not solution_kpis:
+            solution_kpis = calculate_kpis(
+                assignments,
+                vessels_df,
+                plants_df,
+                None,
+                ports_df,
+                rail_costs_df
             )
+
+        total_cost = float(solution_kpis.get('total_cost', solution.get('objective_value', 0) or 0))
+
+        baseline_cost = None
+        if baseline_solution and isinstance(baseline_solution, dict):
+            baseline_kpis = baseline_solution.get('kpis', {})
+            if not baseline_kpis:
+                baseline_assignments = baseline_solution.get('assignments', [])
+                baseline_kpis = calculate_kpis(
+                    baseline_assignments,
+                    vessels_df,
+                    plants_df,
+                    None,
+                    ports_df,
+                    rail_costs_df
+                )
+            baseline_cost = baseline_kpis.get('total_cost')
+            if baseline_cost in (None, "") or pd.isna(baseline_cost):
+                baseline_cost = baseline_solution.get('objective_value', 0)
+            baseline_cost = float(baseline_cost or 0)
+
+        # Cost efficiency insight
+        if baseline_cost and baseline_cost > 0:
+            improvement = ((baseline_cost - total_cost) / baseline_cost) * 100 if baseline_cost else 0.0
+            if improvement > 10:
+                insights.append(dbc.Alert(
+                    f"Dispatch cost reduced by {improvement:.1f}% versus the baseline solution.",
+                    color="success",
+                    className="mb-2"
+                ))
+            elif improvement > 0:
+                insights.append(dbc.Alert(
+                    f"Dispatch cost reduced by {improvement:.1f}% versus baseline.",
+                    color="info",
+                    className="mb-2"
+                ))
+
+        # Vessel utilization insight
+        if assignments:
+            total_vessels = len(vessels_df) if not vessels_df.empty else len(assignments)
+            if total_vessels:
+                processed = len(assignments)
+                utilization = (processed / total_vessels) * 100
+                insights.append(
+                    dbc.Alert(
+                        f"Processing {processed} of {total_vessels} vessels ({utilization:.0f}% utilization).",
+                        color="primary" if utilization > 80 else "warning",
+                        className="mb-2"
+                    )
+                )
         
         # Bottleneck detection
-        ports_df = pd.DataFrame(data_dict['ports'])
-        if len(ports_df) > 0:
+        if not ports_df.empty:
             port_assignments = {}
             for assign in assignments:
                 port = assign.get('port_id', 'Unknown')

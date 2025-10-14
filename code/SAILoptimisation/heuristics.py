@@ -71,6 +71,8 @@ class HeuristicOptimizer:
             'demurrage': 0.0,
             'rerouting_penalty': 0.0,
             'delay_penalty': 0.0,
+            'dispatch_total': 0.0,
+            'grand_total': 0.0,
             'total': 0.0
         }
 
@@ -147,8 +149,7 @@ class HeuristicOptimizer:
 
             costs['ocean_freight'] += CostCalculator.calculate_ocean_freight_cost(cargo_mt, vessel_data)
 
-        costs['total'] = (
-            costs['ocean_freight'] +
+        dispatch_total = (
             costs['port_handling'] +
             costs['storage'] +
             costs['rail_transport'] +
@@ -156,6 +157,9 @@ class HeuristicOptimizer:
             costs['rerouting_penalty'] +
             costs['delay_penalty']
         )
+        costs['dispatch_total'] = dispatch_total
+        costs['grand_total'] = dispatch_total + costs['ocean_freight']
+        costs['total'] = dispatch_total
         return costs
 
     def _get_compatible_plants(self, cargo_grade: str) -> List[str]:
