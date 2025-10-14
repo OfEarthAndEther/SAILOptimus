@@ -1,6 +1,6 @@
-# RailOptimus
+# SAILOptimus
 
-AI-assisted railway operations: delay prediction, schedule optimization, increased throughput, and network simulation with a modern web UI.
+Al-Enabled Logistics Optimizer for Cost-Optimal Vessel Scheduling and Port-Plant Linkage in Steel Supply Chain
 
 ## Tasks Accomplished
 - Task 1: Integrated supervised delay prediction and RL-based scheduling into the backend.
@@ -9,9 +9,10 @@ AI-assisted railway operations: delay prediction, schedule optimization, increas
 
 ## Technology Stack
 - Frontend: React + TypeScript, Vite + Bun, Tailwind CSS, shadcn/Radix UI, React Router, Toaster for pop-up, Leaflet for interactive map. 
-- Backend: Node.js + Express, MongoDB + Mongoose (Atlas), Flask, Socket.IO for real-time updates, Python microservice for ML-based delay prediction and RL-guided speed optimization, CORS to allow a web page to request API's from different domain, Zustand for security authentication, Hash function for security.
+- Backend: Node.js + Express , Flask, Socket.IO for real-time updates, Python microservice for ML-based delay prediction and RL-guided speed optimization, CORS to allow a web page to request API's from different domain, Zustand for security authentication, Hash function for security.
 - Data Flow: Frontend fetches data from REST endpoints or local JSON/GeoJSON → passes props to components → updates via state/hooks → real-time updates via WebSocket.
-- Simulation Engine: Flask + Dash app, Schedules trains conflict-free, integrates ML predictions for ETAs and dynamic speed guidance.
+- Optimizer: Flask + Dash app, Schedules trains conflict-free, integrates ML predictions for ETAs and dynamic speed guidance.
+- ML Model: An ML-powered SAIL Logistics Dashboard that predicts vessel, berthing, and freight delays in real time using Random Forest models to optimize steel transport operations.
 
 ## Key Features
 - AI-Powered Scheduling: Real-time assistance for train controllers in scheduling and precedence decisions.
@@ -26,9 +27,10 @@ AI-assisted railway operations: delay prediction, schedule optimization, increas
 - Performance Gains: Data-driven scheduling reduces travel time, boosts throughput, and improves punctuality.
 
 ## Repository Layout
-- rail-optimus-backend: Node/Express Backend + Python ML microservice assets and models.
+- backend: Node/Express Backend .
 - RailOptimus-dev: Frontend app (Vite + React + TS + Tailwind).
-- RailOptiSim: Standalone Python Simulation app.
+- SAILoptimisation: Standalone Python Optimizer app.
+- SAIL LogisticsML : ML Model used to predict ETAs (Expected Time of Arrival of vessel) and delay.
 
 ---
 
@@ -37,21 +39,16 @@ AI-assisted railway operations: delay prediction, schedule optimization, increas
 ### 1) Clone the Repository
 ```
 git clone <github url>
-cd RailOptimus
+cd SAILOptimus
 ```
 ---
 
-### 2) Backend (Node + Python ML) — rail-optimus-backend
+### 2) Backend (Node) —backend
 ```
-cd rail-optimus-backend
+cd backend
 npm install
 node app.js
 
-# for the ML model: create a venv and install requirements.
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python3 api.py
 ```
 ---
 
@@ -62,12 +59,21 @@ npm install
 npm run dev
 ```
 
-### 4) Simulator — RailOptiSim
+### 4) Optimizer — SAILoptimisation
 ```
-cd RailOptiSim
-python3 -m venv venv
+cd SAILoptimisation
+python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-python3 app.py
+pip install -r requirements_dash.txt
+python app.py
+```
+### 5) ETA & Delay Predictor (ML Model) - SAIL LogisticsML
+```
+cd SAIL LogisticsML
+cd VesselFinal
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements_dash.txt
+python app.py
 ```
 ---
